@@ -5,3 +5,4 @@ build/
 *.pyc
 /output/*
 a.py
+README_test.md
