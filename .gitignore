@@ -2,4 +2,6 @@
 a.py
 venv/
 lora_attention_analyzer.egg-info/
-
+build/
+*.pyc
+/output/*

@@ -206,7 +206,7 @@ def analyze_lora_file(lora_file: str) -> None:
         print(f"Alpha keys: {analysis['alpha_keys']}")
         
         if analysis['sample_keys']:
-            print(f"\n🔍 Sample UNet Keys:")
+            print(f"\nSample UNet Keys:")
             for sample in analysis['sample_keys']:
                 size_mb = sample['size_mb']
                 print(f"   {sample['key']}")
