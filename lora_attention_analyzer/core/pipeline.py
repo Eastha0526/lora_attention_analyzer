@@ -304,7 +304,7 @@ class LoRAAttentionPipeline:
                 print(f"Built-in loading failed: {e}")
         
         # Fallback to direct application
-        print("🔄 Attempting direct LoRA weight application...")
+        print("Attempting direct LoRA weight application...")
         return self.lora_utils.apply_lora_directly(
             self.pipe, lora_file, lora_scale, self.device
         )
