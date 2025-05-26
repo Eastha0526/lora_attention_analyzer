@@ -1,5 +1,5 @@
 """
-Utilities for handling LoRA weights and application.
+LoRA utilities based on working implementation.
 """
 
 import re
@@ -10,11 +10,11 @@ from safetensors import safe_open
 
 class LoRAUtils:
     """
-    Comprehensive utilities for LoRA file handling and application.
+    Simple and effective LoRA utilities based on proven working code.
     
     This class provides functionality for:
     - Analyzing LoRA file structure and contents
-    - Converting between different key naming conventions
+    - Converting between different key naming conventions  
     - Applying LoRA weights directly to pipeline models
     """
     
@@ -28,7 +28,7 @@ class LoRAUtils:
         Returns:
             Dictionary containing comprehensive analysis results
         """
-        print(f"Analyzing LoRA file: {lora_file}")
+        print(f"🔍 Analyzing LoRA file: {lora_file}")
         
         analysis = {
             'file_path': lora_file,
@@ -38,12 +38,7 @@ class LoRAUtils:
             'unet_keys': 0,
             'lora_pairs': 0,
             'alpha_keys': 0,
-            'sample_keys': [],
-            'key_patterns': {
-                'te1_patterns': set(),
-                'te2_patterns': set(),
-                'unet_patterns': set()
-            }
+            'sample_keys': []
         }
         
         try:
@@ -65,19 +60,6 @@ class LoRAUtils:
                 # Find LoRA pairs
                 analysis['lora_pairs'] = len(self._find_lora_pairs(lora_keys))
                 
-                # Analyze key patterns
-                for key in te1_keys[:5]:
-                    pattern = self._extract_key_pattern(key)
-                    analysis['key_patterns']['te1_patterns'].add(pattern)
-                
-                for key in te2_keys[:5]:
-                    pattern = self._extract_key_pattern(key)
-                    analysis['key_patterns']['te2_patterns'].add(pattern)
-                
-                for key in unet_keys[:5]:
-                    pattern = self._extract_key_pattern(key)
-                    analysis['key_patterns']['unet_patterns'].add(pattern)
-                
                 # Sample key information with shapes
                 for key in unet_keys[:5]:
                     tensor = f.get_tensor(key)
@@ -87,10 +69,6 @@ class LoRAUtils:
                         'dtype': str(tensor.dtype),
                         'size_mb': tensor.numel() * tensor.element_size() / (1024 * 1024)
                     })
-                
-                # Convert pattern sets to lists for JSON serialization
-                for component in analysis['key_patterns']:
-                    analysis['key_patterns'][component] = list(analysis['key_patterns'][component])
         
         except Exception as e:
             analysis['error'] = str(e)
@@ -109,7 +87,7 @@ class LoRAUtils:
         if analysis['sample_keys']:
             print(f"Sample UNet keys:")
             for sample in analysis['sample_keys']:
-                print(f"{sample['key']}: {sample['shape']} ({sample['size_mb']:.2f}MB)")
+                print(f"    {sample['key']}: {sample['shape']} ({sample['size_mb']:.2f}MB)")
         
         return analysis
     
@@ -122,6 +100,7 @@ class LoRAUtils:
     ) -> bool:
         """
         Apply LoRA weights directly to the pipeline models.
+        Uses the proven working implementation.
         
         Args:
             pipe: Diffusion pipeline object
@@ -154,25 +133,24 @@ class LoRAUtils:
             if unet_keys:
                 print(f"Applying UNet LoRA ({len(unet_keys)} keys)...")
                 unet_pairs = self._find_lora_pairs(unet_keys)
-                print(f"Found {len(unet_pairs)} UNet LoRA pairs")
+                print(f"  Found {len(unet_pairs)} UNet LoRA pairs")
                 modified_modules += self._apply_unet_lora(
                     pipe.unet, unet_pairs, lora_tensors, lora_scale, device
                 )
 
-            # Apply Text Encoder 1 LoRA weights
+            # Apply Text Encoder LoRA weights
             if te1_keys and hasattr(pipe, 'text_encoder'):
                 print(f"Applying Text Encoder 1 LoRA ({len(te1_keys)} keys)...")
                 te1_pairs = self._find_lora_pairs(te1_keys)
-                print(f"Found {len(te1_pairs)} TE1 LoRA pairs")
+                print(f"  Found {len(te1_pairs)} TE1 LoRA pairs")
                 modified_modules += self._apply_text_encoder_lora(
                     pipe.text_encoder, te1_pairs, lora_tensors, lora_scale, device, 'lora_te1_'
                 )
 
-            # Apply Text Encoder 2 LoRA weights
             if te2_keys and hasattr(pipe, 'text_encoder_2'):
                 print(f"Applying Text Encoder 2 LoRA ({len(te2_keys)} keys)...")
                 te2_pairs = self._find_lora_pairs(te2_keys)
-                print(f"Found {len(te2_pairs)} TE2 LoRA pairs")
+                print(f"  Found {len(te2_pairs)} TE2 LoRA pairs")
                 modified_modules += self._apply_text_encoder_lora(
                     pipe.text_encoder_2, te2_pairs, lora_tensors, lora_scale, device, 'lora_te2_'
                 )
@@ -192,15 +170,7 @@ class LoRAUtils:
             return False
     
     def _find_lora_pairs(self, keys: List[str]) -> Dict[str, Tuple[str, str]]:
-        """
-        Find matching up/down LoRA weight pairs.
-        
-        Args:
-            keys: List of LoRA tensor keys
-            
-        Returns:
-            Dictionary mapping base keys to (up_key, down_key) tuples
-        """
+        """Find matching up/down LoRA weight pairs."""
         up_down_pairs = {}
         
         for key in keys:
@@ -221,12 +191,12 @@ class LoRAUtils:
         lora_scale: float, 
         device: str
     ) -> int:
-        """Apply LoRA weights to UNet model."""
+        """Apply LoRA weights to UNet model using proven working method."""
         modified_modules = 0
         unet_state_dict = unet.state_dict()
         
         for base_key, (up_key, down_key) in lora_pairs.items():
-            # Try various UNet key conversion strategies
+            # Try various UNet key conversion strategies (proven working)
             possible_unet_keys = [
                 base_key + '.weight',
                 base_key,
@@ -235,7 +205,6 @@ class LoRAUtils:
                 self._convert_sd_key_to_diffusers(base_key)
             ]
             
-            # Find matching key in UNet state dict
             unet_key = None
             for possible_key in possible_unet_keys:
                 if possible_key in unet_state_dict:
@@ -244,20 +213,17 @@ class LoRAUtils:
             
             if unet_key:
                 try:
-                    # Get LoRA weights
+                    # LoRA calculation
                     lora_up = lora_tensors[up_key].to(device)
                     lora_down = lora_tensors[down_key].to(device)
                     
-                    # Get alpha scaling factor
+                    # Alpha value check (scaling)
                     alpha_key = base_key + '.alpha'
-                    if alpha_key in lora_tensors:
-                        alpha = lora_tensors[alpha_key].to(device)
-                        scale = alpha / lora_up.shape[0] if alpha.numel() == 1 else 1.0
-                    else:
-                        scale = 1.0
+                    alpha = lora_tensors.get(alpha_key, torch.tensor(lora_up.shape[0])).to(device)
+                    scale = alpha / lora_up.shape[0] if alpha.numel() == 1 else 1.0
                     
-                    # Calculate LoRA delta based on layer type
-                    if len(lora_up.shape) == 4:  # Convolutional layer
+                    # LoRA delta calculation
+                    if len(lora_up.shape) == 4:  # Conv layer
                         lora_delta = torch.nn.functional.conv2d(
                             lora_down.permute(1, 0, 2, 3), 
                             lora_up
@@ -265,11 +231,11 @@ class LoRAUtils:
                     else:  # Linear layer
                         lora_delta = lora_up @ lora_down
                     
-                    # Apply LoRA modification
+                    # Weight update
                     original_weight = unet_state_dict[unet_key]
                     new_weight = original_weight + (lora_scale * scale * lora_delta.to(original_weight.dtype))
                     
-                    # Update model parameters
+                    # Actually update parameters
                     with torch.no_grad():
                         for name, param in unet.named_parameters():
                             if name == unet_key:
@@ -277,14 +243,15 @@ class LoRAUtils:
                                 break
                     
                     modified_modules += 1
-                    if modified_modules <= 3:  # Print first few for feedback
-                        print(f"Applied to {unet_key} (alpha: {scale:.3f})")
+                    if modified_modules <= 5:  # Show first 5 only
+                        print(f"Applied UNet LoRA to: {unet_key} (scale: {scale:.3f})")
                     
                 except Exception as e:
-                    if modified_modules < 5:  # Only print first few errors
-                        print(f"Failed to apply to {unet_key}: {e}")
+                    if modified_modules < 5:  # Only show first few errors
+                        print(f"Failed to apply UNet LoRA to {unet_key}: {e}")
             else:
-                if modified_modules < 5:  # Only print first few missing keys
+                # Only show first 10 missing keys to avoid spam
+                if modified_modules < 10:
                     print(f"UNet key not found for: {base_key}")
         
         return modified_modules
@@ -298,7 +265,7 @@ class LoRAUtils:
         device: str, 
         prefix: str
     ) -> int:
-        """Apply LoRA weights to Text Encoder model."""
+        """Apply LoRA weights to Text Encoder model using proven working method."""
         modified_modules = 0
         te_state_dict = text_encoder.state_dict()
         
@@ -313,7 +280,6 @@ class LoRAUtils:
                 self._convert_te_key_to_diffusers(clean_key)
             ]
             
-            # Find matching key in Text Encoder state dict
             te_key = None
             for possible_key in possible_te_keys:
                 if possible_key in te_state_dict:
@@ -322,26 +288,21 @@ class LoRAUtils:
             
             if te_key:
                 try:
-                    # Get LoRA weights
                     lora_up = lora_tensors[up_key].to(device)
                     lora_down = lora_tensors[down_key].to(device)
                     
-                    # Get alpha scaling factor
+                    # Alpha value check
                     alpha_key = base_key + '.alpha'
-                    if alpha_key in lora_tensors:
-                        alpha = lora_tensors[alpha_key].to(device)
-                        scale = alpha / lora_up.shape[0] if alpha.numel() == 1 else 1.0
-                    else:
-                        scale = 1.0
+                    alpha = lora_tensors.get(alpha_key, torch.tensor(lora_up.shape[0])).to(device)
+                    scale = alpha / lora_up.shape[0] if alpha.numel() == 1 else 1.0
                     
-                    # Calculate LoRA delta (text encoders use linear layers)
+                    # LoRA delta calculation
                     lora_delta = lora_up @ lora_down
                     
-                    # Apply LoRA modification
+                    # Weight update
                     original_weight = te_state_dict[te_key]
                     new_weight = original_weight + (lora_scale * scale * lora_delta.to(original_weight.dtype))
                     
-                    # Update model parameters
                     with torch.no_grad():
                         for name, param in text_encoder.named_parameters():
                             if name == te_key:
@@ -349,25 +310,30 @@ class LoRAUtils:
                                 break
                     
                     modified_modules += 1
-                    if modified_modules <= 2:  # Print first few for feedback
-                        print(f"Applied to {te_key} (alpha: {scale:.3f})")
+                    if modified_modules <= 3:  # Show first 3 only
+                        print(f"Applied {prefix} LoRA to: {te_key} (scale: {scale:.3f})")
                     
                 except Exception as e:
-                    if modified_modules < 3:  # Only print first few errors
-                        print(f"Failed to apply to {te_key}: {e}")
+                    if modified_modules < 3:  # Only show first few errors
+                        print(f"Failed to apply {prefix} LoRA to {te_key}: {e}")
         
         return modified_modules
     
     def _convert_sd_key_to_diffusers(self, sd_key: str) -> str:
-        """Convert Stable Diffusion key naming to Diffusers format."""
+        """Convert Stable Diffusion key to Diffusers format (proven working)."""
+        # input_blocks, middle_block, output_blocks conversion
         diffusers_key = sd_key
         
-        # Convert block naming patterns
+        # input_blocks.X.Y -> down_blocks.X.Y
         diffusers_key = re.sub(r'input_blocks\.(\d+)\.(\d+)', r'down_blocks.\1.attentions.\2', diffusers_key)
+        
+        # middle_block.1 -> mid_block.attentions.0
         diffusers_key = re.sub(r'middle_block\.1', 'mid_block.attentions.0', diffusers_key)
+        
+        # output_blocks.X.Y -> up_blocks.X.Y
         diffusers_key = re.sub(r'output_blocks\.(\d+)\.(\d+)', r'up_blocks.\1.attentions.\2', diffusers_key)
         
-        # Convert attention layer naming
+        # transformer_blocks mapping
         diffusers_key = diffusers_key.replace('_transformer_blocks.', '.transformer_blocks.')
         diffusers_key = diffusers_key.replace('_attn1_', '.attn1.')
         diffusers_key = diffusers_key.replace('_attn2_', '.attn2.')
@@ -379,21 +345,11 @@ class LoRAUtils:
         return diffusers_key
     
     def _convert_te_key_to_diffusers(self, te_key: str) -> str:
-        """Convert Text Encoder key naming to Diffusers format."""
-        diffusers_key = te_key
-        
-        # Convert text encoder layer naming
-        diffusers_key = diffusers_key.replace('text_model_encoder_layers_', 'text_model.encoder.layers.')
+        """Convert Text Encoder key to Diffusers format (proven working)."""
+        # text_model_encoder_layers -> text_model.encoder.layers
+        diffusers_key = te_key.replace('text_model_encoder_layers_', 'text_model.encoder.layers.')
         diffusers_key = diffusers_key.replace('_mlp_', '.mlp.')
         diffusers_key = diffusers_key.replace('_self_attn_', '.self_attn.')
         diffusers_key = diffusers_key.replace('_', '.')
         
         return diffusers_key
-    
-    def _extract_key_pattern(self, key: str) -> str:
-        """Extract general pattern from a LoRA key for analysis."""
-        # Remove specific indices and weights to get pattern
-        pattern = re.sub(r'\.\d+\.', '.N.', key)
-        pattern = re.sub(r'\.lora_(up|down)\.weight', '.lora_X.weight', pattern)
-        pattern = re.sub(r'\.alpha$', '.alpha', pattern)
-        return pattern

@@ -3,3 +3,4 @@ daam
 matplotlib
 xformers
 seaborn
+peft
