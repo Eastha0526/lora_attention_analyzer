@@ -89,6 +89,12 @@ output_directory/
 - 1.0: Full LoRA effect (recommended starting point)
 - >1.0: Amplified LoRA effect
 
+### Negative Prompt
+- if negative prompt is None: Default negative prompt is used
+- default negative prompt
+> worst quality, low quality, lowers, low details, bad quality, poorly drawn, bad anatomy, multiple views, bad hands, blurry, artist sign, weibo username
+
+
 ### Generation Parameters
 - `steps`: Number of inference steps (20-100, default: 50)
 - `guidance_scale`: CFG scale (5.0-15.0, default: 7.5)
@@ -119,6 +125,7 @@ for i, lora_file in enumerate(lora_files):
         # ... other parameters
     )
 ```
+
 
 ## Acknowledgments
 
