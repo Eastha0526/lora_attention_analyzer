@@ -2,7 +2,12 @@
 venv/
 lora_attention_analyzer.egg-info/
 build/
+/__pycache__/
+*.egg-info
 *.pyc
 /output/*
 a.py
+a copy.py
+output_cat/
+output_cat_ad/
 README_test.md
