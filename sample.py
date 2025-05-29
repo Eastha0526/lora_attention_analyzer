@@ -10,7 +10,7 @@ results = pipeline.run_comparison(
     lora_scale=1.0,
     seed=0,
     steps=50,
-    guidance_scale=7.5,
+    guidance_scale=7.5, # cfg scale
     height=1024,
     width=1024,
 )

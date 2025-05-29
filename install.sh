@@ -75,5 +75,4 @@ create_venv() {
     finish
 }
 
-
 prepare_install

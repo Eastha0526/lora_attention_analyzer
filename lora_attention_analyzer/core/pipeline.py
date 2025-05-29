@@ -52,7 +52,7 @@ class LoRAAttentionPipeline:
         # Initialize components
         self.pipe = None
         self.lora_utils = LoRAUtils()
-        self.attention_extractor = AttentionExtractor()
+        self.attention_extractor = AttentionExtractor(log_file_prefix="attention_base_lora")
         self.visualizer = AttentionVisualizer()
         
         # Default negative prompt
@@ -269,12 +269,17 @@ class LoRAAttentionPipeline:
                 self.visualizer.create_comprehensive_analysis(
                     heat_map, image, analysis_dir, tokens_to_analyze
                 )
-                
+                token_scores = self.attention_extractor.get_token_attention_scores(
+                    heat_map,
+                    tokens_to_analyze,
+                    run_label=output_prefix,   # 'base' / 'lora'
+                )
                 return {
                     'image': image,
                     'heat_map': heat_map,
                     'analysis_dir': analysis_dir,
-                    'image_path': image_path
+                    'image_path': image_path,
+                    'token_scores': token_scores,
                 }
     
     def _apply_lora(self, lora_file: str, lora_scale: float) -> bool:

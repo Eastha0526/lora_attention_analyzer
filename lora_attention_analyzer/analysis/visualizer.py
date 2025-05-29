@@ -102,7 +102,7 @@ class AttentionVisualizer:
             try:
                 test_map = heat_map.compute_word_heat_map(token)
                 # Try to extract data to ensure it's valid
-                heat_data = self.attention_extractor.extract_heat_data(test_map)
+                heat_data = self.attention_extractor.extract_heat_data(test_map, token)
                 if heat_data is not None:
                     valid_tokens.append(token)
                     print(f"'{token}': valid")
@@ -136,7 +136,7 @@ class AttentionVisualizer:
             for token in tokens:
                 try:
                     token_heat_map = heat_map.compute_word_heat_map(token)
-                    heat_data = self.attention_extractor.extract_heat_data(token_heat_map)
+                    heat_data = self.attention_extractor.extract_heat_data(token_heat_map, token)
                     
                     if heat_data is not None:
                         token_maps.append(heat_data)
@@ -239,7 +239,7 @@ class AttentionVisualizer:
             print(f"Creating {grid_size}x{grid_size} grid analysis")
             
             # Get attention scores
-            token_scores = self.attention_extractor.get_token_attention_scores(heat_map, tokens)
+            token_scores = self.attention_extractor.get_token_attention_scores(heat_map, tokens, run_label="grid")
             
             if len(token_scores) < 2:
                 print(f"Need at least 2 valid tokens for grid analysis")
@@ -303,7 +303,7 @@ class AttentionVisualizer:
             print(f"Creating attention distribution for {len(tokens)} tokens")
             
             # Get attention scores
-            token_scores = self.attention_extractor.get_token_attention_scores(heat_map, tokens)
+            token_scores = self.attention_extractor.get_token_attention_scores(heat_map, tokens, run_label="dist")
             
             if not token_scores:
                 print(f"No valid attention scores found")
@@ -439,7 +439,7 @@ class AttentionVisualizer:
                     else:
                         # Fallback: manual overlay
                         ax.imshow(image)
-                        heat_data = self.attention_extractor.extract_heat_data(token_map)
+                        heat_data = self.attention_extractor.extract_heat_data(token_map, token)
                         if heat_data is not None:
                             ax.imshow(heat_data, alpha=0.5, cmap='hot')
                     
@@ -523,8 +523,8 @@ class AttentionVisualizer:
     ) -> None:
         """Create attention score comparison chart."""
         # Get attention scores for both models
-        base_scores = self.attention_extractor.get_token_attention_scores(base_heat_map, tokens)
-        lora_scores = self.attention_extractor.get_token_attention_scores(lora_heat_map, tokens)
+        base_scores = self.attention_extractor.get_token_attention_scores(base_heat_map, tokens, run_label="base")
+        lora_scores = self.attention_extractor.get_token_attention_scores(lora_heat_map, tokens, run_label="lora")
         
         # Find common tokens
         common_tokens = [token for token in tokens if token in base_scores and token in lora_scores]

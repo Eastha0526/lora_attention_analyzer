@@ -1,11 +1,13 @@
 """
 Utilities for extracting and processing attention data from DAAM heat maps.
 """
-
+import os
+import json
 import numpy as np
+from datetime import datetime
 import torch
 from typing import Optional, Dict, Any, List, Tuple
-
+import logging
 
 class AttentionExtractor:
     """
@@ -18,7 +20,52 @@ class AttentionExtractor:
     - Computing pixel-wise dominant tokens
     """
     
-    def extract_heat_data(self, token_heat_map: Any, token_name: Optional[str] = None) -> Optional[np.ndarray]:
+    def __init__(
+        self,
+        log_dir:str = "./logs",
+        log_file_prefix: str = "attention_extractor",
+        also_write_txt: bool = False,
+    ):
+        os.makedirs(log_dir, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        self.json_path = os.path.join(log_dir, f"{log_file_prefix}_{ts}.json")
+        self.txt_path = (
+            os.path.join(log_dir, f"{log_file_prefix}_{ts}.txt") if also_write_txt else None
+        )
+
+        self.logger = logging.getLogger(f"AttentionExtractor_{ts}")
+        self.logger.setLevel(logging.INFO)
+        self.logger.propagate = False
+
+        fmt = logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S")
+
+        if not self.logger.handlers:
+            console_hdl = logging.StreamHandler()
+            console_hdl.setFormatter(fmt)
+            self.logger.addHandler(console_hdl)
+
+            if self.txt_path:
+                file_hdl = logging.FileHandler(self.txt_path)
+                file_hdl.setFormatter(fmt)
+                self.logger.addHandler(file_hdl)
+
+        fmt = logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S")
+        console_hdl = logging.StreamHandler()
+        console_hdl.setFormatter(fmt)
+        self.logger.addHandler(console_hdl)
+
+        if self.txt_path:
+            file_hdl = logging.FileHandler(self.txt_path)
+            file_hdl.setFormatter(fmt)
+            self.logger.addHandler(file_hdl)
+
+        self._json_log: Dict[str, Any] = {
+            "created": datetime.now().isoformat(),
+            "runs": [],
+        }
+
+    def extract_heat_data(self, token_heat_map: Any, token_name: Optional[str] = None, run_label:str = None) -> Optional[np.ndarray]:
         """
         Extract numpy array data safely from WordHeatMap objects.
         
@@ -166,44 +213,58 @@ class AttentionExtractor:
                 print(f"Processing failed: {str(e)}")
             return None
     
-    def get_token_attention_scores(self, heat_map: Any, tokens: List[str]) -> Dict[str, float]:
-        """
-        Get total attention scores for a list of tokens.
-        
-        Args:
-            heat_map: Global heat map from DAAM
-            tokens: List of tokens to analyze
-            
-        Returns:
-            Dictionary mapping token names to their total attention scores
-        """
-        print(f"Computing attention scores for {len(tokens)} tokens")
-        
-        token_scores = {}
-        
-        for i, token in enumerate(tokens, 1):
+    def get_token_attention_scores(
+        self, heat_map: Any, tokens: List[str], run_label: str = "run",
+    ) -> Dict[str, float]:
+        self.logger.info(f"{len(tokens)}개 토큰에 대한 attention 계산 시작")
+
+        token_scores: Dict[str, float] = {}
+        errors: Dict[str, str] = {}
+
+        for idx, token in enumerate(tokens, 1):
             try:
-                print(f"  {i}/{len(tokens)} Processing '{token}'...")
-                
-                # Get token heat map
+                self.logger.info(f"{idx}/{len(tokens)} '{token}' 처리 중")
+
+                # 토큰별 heat map 추출
                 token_heat_map = heat_map.compute_word_heat_map(token)
-                
-                # Extract heat data
+
+                # numpy 데이터 추출
                 heat_data = self.extract_heat_data(token_heat_map, token)
-                
+
                 if heat_data is not None:
-                    # Compute total attention (sum of all values)
                     total_attention = float(np.sum(heat_data))
                     token_scores[token] = total_attention
-                    print(f"'{token}': {total_attention:.4f}")
+                    self.logger.info(f"    → '{token}': {total_attention:.4f}")
                 else:
-                    print(f"'{token}': No data extracted")
-                    
+                    self.logger.warning(f"'{token}': 추출 실패 (데이터 없음)")
+                    self._json_log["errors"][token] = "No data extracted"
+
             except Exception as e:
-                print(f"'{token}': Error - {str(e)}")
-                continue
-        
-        print(f"Successfully computed scores for {len(token_scores)}/{len(tokens)} tokens")
+                msg = str(e)
+                self.logger.error(f"'{token}': 오류 발생 - {msg}")
+                self._json_log["errors"][token] = msg
+
+
+        self.logger.info(
+            f"attention 계산 완료: {len(token_scores)}/{len(tokens)}개 성공"
+        )
+
+        self._json_log["runs"].append(
+            {
+                "label": run_label,
+                "timestamp": datetime.now().isoformat(),
+                "token_scores": token_scores,
+                "errors": errors,
+            }
+        )
+        with open(self.json_path, "w", encoding="utf-8") as f:
+            json.dump(self._json_log, f, indent=2, ensure_ascii=False)
+
+        self.logger.info(f"로그 저장 완료 → {self.json_path}")
+
+        if self.txt_path:
+            self.logger.info(f"텍스트 로그 저장 완료 → {self.txt_path}")
+
         return token_scores
     
     def normalize_attention_maps(
@@ -223,7 +284,7 @@ class AttentionExtractor:
         Returns:
             List of normalized attention maps
         """
-        print(f"🔧 Normalizing {len(token_maps)} attention maps to {target_shape}")
+        print(f"Normalizing {len(token_maps)} attention maps to {target_shape}")
         
         normalized_maps = []
         
@@ -235,7 +296,7 @@ class AttentionExtractor:
                 normalized_maps.append(token_map)
                 continue
             
-            print(f"  📐 Map {i+1}: {original_shape} -> {target_shape}")
+            print(f"Map {i+1}: {original_shape} -> {target_shape}")
             
             try:
                 if method == 'resize':
