@@ -2,6 +2,12 @@
 
 A comprehensive tool for analyzing attention maps in Stable Diffusion models with LoRA (Low-Rank Adaptation) support. This package provides detailed visualization and analysis of how LoRA modifications affect token attention patterns in diffusion models.
 
+
+## Installation
+
+- pip install -r requirements.txt
+- pip install -U diffusers transformers accelerate
+
 ### Python API
 
 ```python
