@@ -114,7 +114,8 @@ class LoRAAttentionPipeline:
     
     def run_comparison(
         self,
-        lora_file: str,
+        lora_adaptive_file: str,
+        lora_normal_file: str,
         prompt: str,
         output_dir: str,
         negative_prompt: Optional[str] = None,
@@ -126,93 +127,58 @@ class LoRAAttentionPipeline:
         width: int = 1024,
         tokens_to_analyze: Optional[List[str]] = None
     ) -> Dict[str, Any]:
-        """
-        Run complete LoRA comparison analysis.
-        
-        Args:
-            lora_file: Path to LoRA file (.safetensors)
-            prompt: Generation prompt
-            output_dir: Output directory for results
-            negative_prompt: Negative prompt (uses default if None)
-            lora_scale: LoRA scaling factor (0.0-2.0)
-            seed: Random seed for reproducible generation
-            steps: Number of inference steps
-            guidance_scale: Guidance scale for generation
-            height: Image height in pixels
-            width: Image width in pixels
-            tokens_to_analyze: List of tokens to analyze (auto-detected if None)
-            
-        Returns:
-            Dictionary containing analysis results with base and lora data
-        """
-        # Setup
+        """Compare two LoRA models and base pipeline."""
         os.makedirs(output_dir, exist_ok=True)
-        
+
         if negative_prompt is None:
             negative_prompt = self.default_negative_prompt
-        
+
         if tokens_to_analyze is None:
             tokens_to_analyze = self._extract_tokens_from_prompt(prompt)
-        
+
         print(f"Prompt: {prompt}")
         print(f"Tokens to analyze: {tokens_to_analyze}")
         print(f"Output directory: {output_dir}")
-        
+
         results = {}
-        
-        # Step 1: Generate base image (without LoRA)
-        print("\nGENERATING BASE IMAGE (WITHOUT LORA)")
-        print("=" * 50)
-        base_results = self._generate_with_analysis(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            height=height,
-            width=width,
-            guidance_scale=guidance_scale,
-            steps=steps,
-            seed=seed,
-            tokens_to_analyze=tokens_to_analyze,
-            output_prefix="base",
-            output_dir=output_dir
+
+        # Generate base image
+        print("\n[1] GENERATING BASE IMAGE")
+        results['base'] = self._generate_with_analysis(
+            prompt, negative_prompt, height, width, guidance_scale, steps, seed,
+            tokens_to_analyze, "base", output_dir
         )
-        results['base'] = base_results
-        
-        # Step 2: Apply LoRA
-        print("\nApplying LoRA weights")
-        print("=" * 50)
-        lora_success = self._apply_lora(lora_file, lora_scale)
-        
-        if lora_success:
-            # Step 3: Generate LoRA image
-            print("\nGENERATING LORA IMAGE")
-            print("=" * 50)
-            lora_results = self._generate_with_analysis(
-                prompt=prompt,
-                negative_prompt=negative_prompt,
-                height=height,
-                width=width,
-                guidance_scale=guidance_scale,
-                steps=steps,
-                seed=seed,
-                tokens_to_analyze=tokens_to_analyze,
-                output_prefix="lora",
-                output_dir=output_dir
+
+        # LoRA-Normal
+        print("\n[2] APPLYING LORA NORMAL")
+        if self._apply_lora(lora_normal_file, lora_scale):
+            results['lora_normal'] = self._generate_with_analysis(
+                prompt, negative_prompt, height, width, guidance_scale, steps, seed,
+                tokens_to_analyze, "lora_normal", output_dir
             )
-            results['lora'] = lora_results
-            
-            # Step 4: Create comparative analysis
-            print("\nCREATING COMPARATIVE ANALYSIS")
-            print("=" * 50)
-            self._create_comparative_analysis(results, output_dir, tokens_to_analyze)
-            
-            print("\nLoRA comparison completed successfully!")
-            print(f"Results saved in: {output_dir}")
         else:
-            print("\nFailed to apply LoRA weights")
-            results['error'] = "Failed to apply LoRA weights"
-        
+            print("Failed to apply normal LoRA")
+            results['lora_normal'] = {'error': "Failed to apply normal LoRA weights"}
+
+        # LoRA-Adaptive
+        print("\n[3] APPLYING LORA ADAPTIVE")
+        if self._apply_lora(lora_adaptive_file, lora_scale):
+            results['lora_adaptive'] = self._generate_with_analysis(
+                prompt, negative_prompt, height, width, guidance_scale, steps, seed,
+                tokens_to_analyze, "lora_adaptive", output_dir
+            )
+        else:
+            print("Failed to apply adaptive LoRA")
+            results['lora_adaptive'] = {'error': "Failed to apply adaptive LoRA weights"}
+
+        # Compare
+        print("\n[4] CREATING COMPARATIVE ANALYSIS")
+        self._create_comparative_analysis(results, output_dir, tokens_to_analyze)
+
+        print("Finished multi-LoRA comparison.")
         return results
-    
+
+        
     def _generate_with_analysis(
         self,
         prompt: str,
@@ -356,30 +322,18 @@ class LoRAAttentionPipeline:
         output_dir: str, 
         tokens_to_analyze: List[str]
     ) -> None:
-        """Create comparative analysis between base and LoRA results."""
-        print("Creating side-by-side comparisons...")
-        
+        """Create comparative analysis across base, normal, and adaptive LoRA results."""
         try:
-            self.visualizer.create_comparative_analysis(
+            self.visualizer.create_comparative_analysis_multi(
                 base_heat_map=results['base']['heat_map'],
-                lora_heat_map=results['lora']['heat_map'],
+                normal_heat_map=results['lora_normal'].get('heat_map'),
+                adaptive_heat_map=results['lora_adaptive'].get('heat_map'),
                 base_image=results['base']['image'],
-                lora_image=results['lora']['image'],
+                normal_image=results['lora_normal'].get('image'),
+                adaptive_image=results['lora_adaptive'].get('image'),
                 tokens=tokens_to_analyze,
                 output_dir=output_dir
             )
-            print("Comparative analysis completed")
+            print("Multi-LoRA comparative analysis completed")
         except Exception as e:
             print(f"Comparative analysis failed: {e}")
-    
-    def get_pipeline_info(self) -> Dict[str, Any]:
-        """Get information about the loaded pipeline."""
-        return {
-            'model_id': self.model_id,
-            'model_type': self.model_type,
-            'device': self.device,
-            'torch_dtype': str(self.torch_dtype),
-            'scheduler': type(self.pipe.scheduler).__name__ if self.pipe else None,
-            'unet_loaded': self.pipe is not None and hasattr(self.pipe, 'unet'),
-            'text_encoder_loaded': self.pipe is not None and hasattr(self.pipe, 'text_encoder'),
-        }

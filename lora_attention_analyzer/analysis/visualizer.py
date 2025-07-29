@@ -495,6 +495,66 @@ class AttentionVisualizer:
             print(f"Comparative analysis failed: {e}")
             import traceback
             traceback.print_exc()
+            
+    def create_comparative_analysis_multi(
+        self,
+        base_heat_map: Any,
+        normal_heat_map: Any,
+        adaptive_heat_map: Any,
+        base_image: Any,
+        normal_image: Any,
+        adaptive_image: Any,
+        tokens: List[str],
+        output_dir: str
+    ) -> None:
+        """
+        Create a three-way comparative analysis between base, normal LoRA, and adaptive LoRA.
+        """
+        print("Creating multi-LoRA comparative analysis...")
+
+        try:
+            output_path = os.path.join(output_dir, "token_comparisons_multi")
+            os.makedirs(output_path, exist_ok=True)
+
+            for token in tokens[:6]:  # Limit to a manageable number
+                fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+                fig.suptitle(f"Token: '{token}' - Base vs Normal LoRA vs Adaptive LoRA", fontsize=16, fontweight='bold')
+
+                # Row 1: Images
+                images = [base_image, normal_image, adaptive_image]
+                titles = ["Base Model", "Normal LoRA", "Adaptive LoRA"]
+                for i in range(3):
+                    axes[0, i].imshow(images[i])
+                    axes[0, i].set_title(titles[i], fontsize=14)
+                    axes[0, i].axis('off')
+
+                # Row 2: Attention overlays
+                maps = [
+                    (base_heat_map, base_image),
+                    (normal_heat_map, normal_image),
+                    (adaptive_heat_map, adaptive_image)
+                ]
+                for i, (hm, img) in enumerate(maps):
+                    try:
+                        token_map = hm.compute_word_heat_map(token)
+                        token_map.plot_overlay(img, ax=axes[1, i])
+                        axes[1, i].set_title(f"{titles[i]} Attention", fontsize=12)
+                    except Exception as e:
+                        axes[1, i].text(0.5, 0.5, f"Error: {str(e)}", ha='center', va='center', transform=axes[1, i].transAxes)
+                        axes[1, i].set_title(f"{titles[i]} Attention (Error)")
+                    axes[1, i].axis('off')
+
+                plt.tight_layout()
+                save_path = os.path.join(output_path, f"{token}_triple_comparison.png")
+                plt.savefig(save_path, dpi=self.default_dpi, bbox_inches='tight')
+                plt.close()
+                print(f"Saved: {save_path}")
+
+        except Exception as e:
+            print(f"create_comparative_analysis_multi failed: {e}")
+            import traceback
+            traceback.print_exc()
+
     
     def _create_image_comparison(self, base_image: Any, lora_image: Any, output_dir: str) -> None:
         """Create side-by-side image comparison."""
